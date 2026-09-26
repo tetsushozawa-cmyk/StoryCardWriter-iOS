@@ -6,7 +6,7 @@ struct EditorView: View {
     @Binding var project: StoryProject
     let onClose: () -> Void
 
-    @State private var selectedType: CardType = .hero
+    @State private var selectedType: CardType = .idea
     @State private var bodyText = ""
     @State private var editingID: String?
     @State private var insertAfterID: String?
@@ -36,7 +36,7 @@ struct EditorView: View {
                     ForEach(project.cards) { card in
                         StoryCardRow(
                             card: card,
-                            label: project.speakerName(for: card.type),
+                            label: project.cardLabel(for: card.type),
                             onInsert: { beginInsert(after: card) },
                             onEdit: { beginEdit(card) },
                             onDelete: { delete(card) }
@@ -147,7 +147,8 @@ struct EditorView: View {
     }
 
     private func beginInsert(after card: StoryCard) {
-        editingID = nil; insertAfterID = card.id; bodyText = ""; editorFocused = true
+        editingID = nil; insertAfterID = card.id; selectedType = .idea
+        bodyText = ""; editorFocused = true
     }
 
     private func beginEdit(_ card: StoryCard) {
@@ -184,7 +185,9 @@ struct EditorView: View {
         commit()
     }
 
-    private func clearMode() { editingID = nil; insertAfterID = nil; bodyText = "" }
+    private func clearMode() {
+        editingID = nil; insertAfterID = nil; selectedType = .idea; bodyText = ""
+    }
 
     private func importFile(_ result: Result<URL, Error>) {
         do {
@@ -192,7 +195,7 @@ struct EditorView: View {
             let access = url.startAccessingSecurityScopedResource()
             defer { if access { url.stopAccessingSecurityScopedResource() } }
             project = try StoryProjectFileDecoder.decode(Data(contentsOf: url))
-            clearMode(); selectedType = .hero
+            clearMode()
         } catch { errorMessage = error.localizedDescription }
     }
 }
@@ -206,7 +209,7 @@ private struct StoryCardRow: View {
 
     var body: some View {
         HStack {
-            if card.type == .partner || card.type == .partner2 { Spacer(minLength: 38) }
+            if card.type == .idea || card.type == .legacyPartner2 { Spacer(minLength: 38) }
             VStack(alignment: .leading, spacing: 8) {
                 Text(label).font(.caption.bold()).foregroundStyle(card.type.color)
                     .padding(.horizontal, 9).padding(.vertical, 4)
@@ -222,8 +225,8 @@ private struct StoryCardRow: View {
             .padding(12).background(card.type.color.opacity(0.07))
             .clipShape(RoundedRectangle(cornerRadius: 9))
             .overlay(RoundedRectangle(cornerRadius: 9).stroke(card.type.color.opacity(0.65)))
-            .frame(maxWidth: (card.type == .narration || card.type == .action) ? 300 : 350)
-            if card.type == .hero { Spacer(minLength: 38) }
+            .frame(maxWidth: (card.type == .target || card.type == .reference) ? 300 : 350)
+            if card.type == .subject || card.type == .legacyHero { Spacer(minLength: 38) }
         }
         .frame(maxWidth: .infinity)
     }

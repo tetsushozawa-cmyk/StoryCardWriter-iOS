@@ -10,10 +10,10 @@ struct StoryProject: Codable, Hashable {
     var cards: [StoryCard] = []
     var characters: [CharacterData] = []
 
-    enum CodingKeys: String, CodingKey {
-        case title, template, templateName, participantCount, protagonistName, heroName
-        case partner1Name, partnerName, partner2Name, cards, characters, characterNotes
-    }
+    // Retain source objects so fields introduced by another app version survive.
+    var sourceJSON: [String: JSONValue] = [:]
+    var sourceRootJSON: [String: JSONValue] = [:]
+    var sourceWasWrapped = false
 
     init(
         title: String = "",
@@ -36,40 +36,79 @@ struct StoryProject: Codable, Hashable {
     }
 
     init(from decoder: Decoder) throws {
-        let box = try decoder.container(keyedBy: CodingKeys.self)
-        title = try box.decodeIfPresent(String.self, forKey: .title) ?? ""
-        template = try box.decodeIfPresent(String.self, forKey: .template)
-            ?? box.decodeIfPresent(String.self, forKey: .templateName) ?? "Scenario"
-        participantCount = min(3, max(2, try box.decodeIfPresent(Int.self, forKey: .participantCount) ?? 2))
-        protagonistName = try box.decodeIfPresent(String.self, forKey: .protagonistName)
-            ?? box.decodeIfPresent(String.self, forKey: .heroName) ?? "人物A"
-        partner1Name = try box.decodeIfPresent(String.self, forKey: .partner1Name)
-            ?? box.decodeIfPresent(String.self, forKey: .partnerName) ?? "人物B"
-        partner2Name = try box.decodeIfPresent(String.self, forKey: .partner2Name) ?? "友人"
-        cards = try box.decodeIfPresent([StoryCard].self, forKey: .cards) ?? []
-        characters = try box.decodeIfPresent([CharacterData].self, forKey: .characters)
-            ?? box.decodeIfPresent([CharacterData].self, forKey: .characterNotes) ?? []
+        let value = try JSONValue(from: decoder)
+        guard let source = value.objectValue else {
+            throw DecodingError.typeMismatch(
+                [String: JSONValue].self,
+                .init(codingPath: decoder.codingPath, debugDescription: "Story must be a JSON object")
+            )
+        }
+
+        sourceJSON = source
+        sourceRootJSON = source
+        title = source["title"]?.stringValue ?? ""
+        template = source["template"]?.stringValue
+            ?? source["templateName"]?.stringValue
+            ?? "Scenario"
+        participantCount = min(3, max(2, source["participantCount"]?.intValue ?? 2))
+        protagonistName = StoryProject.firstNonEmpty(source, keys: ["protagonistName", "heroName"])
+            ?? "人物A"
+        partner1Name = StoryProject.firstNonEmpty(source, keys: ["partner1Name", "partnerName"])
+            ?? "人物B"
+        partner2Name = StoryProject.firstNonEmpty(source, keys: ["partner2Name"]) ?? "友人"
+
+        let decodedCards: [(sourceIndex: Int, order: Int, card: StoryCard)] = try
+            (source["cards"]?.arrayValue ?? []).enumerated().compactMap { index, cardValue in
+                guard let cardObject = cardValue.objectValue else { return nil }
+                let data = try JSONEncoder().encode(cardValue)
+                let card = try JSONDecoder().decode(StoryCard.self, from: data)
+                return (index, cardObject["order"]?.intValue ?? index, card)
+            }
+        cards = decodedCards
+            .sorted { left, right in
+                left.order == right.order
+                    ? left.sourceIndex < right.sourceIndex
+                    : left.order < right.order
+            }
+            .map(\.card)
+
+        if let characterValues = (source["characters"] ?? source["characterNotes"])?.arrayValue {
+            let data = try JSONEncoder().encode(JSONValue.array(characterValues))
+            characters = try JSONDecoder().decode([CharacterData].self, from: data)
+        } else {
+            characters = []
+        }
     }
 
     func encode(to encoder: Encoder) throws {
-        var box = encoder.container(keyedBy: CodingKeys.self)
-        try box.encode(title, forKey: .title)
-        try box.encode(template, forKey: .template)
-        try box.encode(participantCount, forKey: .participantCount)
-        try box.encode(protagonistName, forKey: .protagonistName)
-        try box.encode(partner1Name, forKey: .partner1Name)
-        try box.encode(partner2Name, forKey: .partner2Name)
-        try box.encode(protagonistName, forKey: .heroName)
-        try box.encode(partner1Name, forKey: .partnerName)
-        try box.encode(cards, forKey: .cards)
-        try box.encode(characters, forKey: .characters)
+        var root: [String: JSONValue]
+        if sourceWasWrapped {
+            root = sourceRootJSON
+            root.removeValue(forKey: "formatVersion")
+            root.removeValue(forKey: "fileType")
+            root.removeValue(forKey: "story")
+            sourceJSON.forEach { root[$0.key] = $0.value }
+        } else {
+            root = sourceJSON.isEmpty ? sourceRootJSON : sourceJSON
+        }
+
+        root["title"] = .string(title)
+        root["templateName"] = .string(template)
+        root["participantCount"] = .integer(Int64(participantCount))
+        root["protagonistName"] = .string(protagonistName)
+        root["partner1Name"] = .string(partner1Name)
+        root["partner2Name"] = .string(partner2Name)
+        root["partnerName"] = .string(partner1Name)
+        root["cards"] = .array(cards.enumerated().map { index, card in
+            .object(card.externalJSON(order: index))
+        })
+
+        let charactersData = try JSONEncoder().encode(characters)
+        root["characters"] = try JSONDecoder().decode(JSONValue.self, from: charactersData)
+        try JSONValue.object(root).encode(to: encoder)
     }
 
-    var availableTypes: [CardType] {
-        participantCount == 3
-            ? [.hero, .partner, .partner2, .narration]
-            : [.hero, .partner, .narration, .action]
-    }
+    var availableTypes: [CardType] { CardType.quickTypes }
 
     func characterName(_ id: String) -> String {
         switch id {
@@ -94,13 +133,15 @@ struct StoryProject: Codable, Hashable {
         characters.append(updated)
     }
 
-    func speakerName(for type: CardType) -> String {
-        switch type {
-        case .hero: protagonistName
-        case .partner: partner1Name
-        case .partner2: partner2Name
-        case .narration: "ナレーション"
-        case .action: "アクション"
+    func cardLabel(for type: CardType) -> String { type.displayName }
+
+    private static func firstNonEmpty(
+        _ source: [String: JSONValue],
+        keys: [String]
+    ) -> String? {
+        for key in keys {
+            if let value = source[key]?.stringValue, !value.isEmpty { return value }
         }
+        return nil
     }
 }

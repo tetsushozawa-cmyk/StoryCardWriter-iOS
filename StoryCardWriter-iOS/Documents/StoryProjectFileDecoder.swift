@@ -7,18 +7,12 @@ extension UTType {
 }
 
 enum StoryProjectFileDecoder {
-    private struct Envelope: Decodable { let story: StoryProject }
-
     static func decode(_ data: Data) throws -> StoryProject {
-        let decoder = JSONDecoder()
-        if let project = try? decoder.decode(StoryProject.self, from: data) { return project }
-        return try decoder.decode(Envelope.self, from: data).story
+        try ScwCodec.decode(data)
     }
 
     static func encode(_ project: StoryProject) throws -> Data {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-        return try encoder.encode(project)
+        try ScwCodec.encode(project)
     }
 }
 

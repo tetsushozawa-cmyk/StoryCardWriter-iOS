@@ -1,29 +1,55 @@
-import SwiftUI
+import Foundation
 
 enum CardType: String, Codable, CaseIterable, Hashable {
-    case hero = "Hero"
-    case partner = "Partner"
-    case partner2 = "Partner2"
-    case narration = "Narration"
-    case action = "Action"
+    case subject
+    case idea
+    case target
+    case reference
+    case opinion
+    case decision
+    case legacyHero
+    case legacyPartner2
+    case unknown
+
+    static let quickTypes: [CardType] = [.idea, .target, .reference, .opinion]
+
+    static func classify(_ savedValue: String) -> CardType {
+        switch savedValue {
+        case "主人公", "Protagonist": .subject
+        case "相手", "Partner": .idea
+        case "ナレーション", "Narration": .target
+        case "アクション", "Action": .reference
+        case "心情", "Emotion": .opinion
+        case "効果音", "SoundEffect": .decision
+        case "Hero": .legacyHero
+        case "Partner2": .legacyPartner2
+        default: .unknown
+        }
+    }
+
+    var desktopSaveValue: String {
+        switch self {
+        case .subject: "主人公"
+        case .idea: "相手"
+        case .target: "ナレーション"
+        case .reference: "アクション"
+        case .opinion: "心情"
+        case .decision: "効果音"
+        case .legacyHero: "Hero"
+        case .legacyPartner2: "Partner2"
+        case .unknown: "Unknown"
+        }
+    }
 
     var displayName: String {
         switch self {
-        case .hero: "主人公"
-        case .partner: "相手役1"
-        case .partner2: "相手役2"
-        case .narration: "ナレーション"
-        case .action: "アクション"
+        case .subject, .legacyHero: "主題"
+        case .idea: "アイデア"
+        case .target, .legacyPartner2, .unknown: "対象"
+        case .reference: "参考"
+        case .opinion: "意見"
+        case .decision: "決定"
         }
     }
 
-    var color: Color {
-        switch self {
-        case .hero: Color(red: 0.10, green: 0.36, blue: 0.66)
-        case .partner: Color(red: 0.15, green: 0.45, blue: 0.23)
-        case .partner2: Color(red: 0.44, green: 0.23, blue: 0.58)
-        case .narration: Color(red: 0.34, green: 0.36, blue: 0.40)
-        case .action: Color(red: 0.61, green: 0.36, blue: 0.08)
-        }
-    }
 }
