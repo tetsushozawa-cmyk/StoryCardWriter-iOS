@@ -3,7 +3,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 extension UTType {
-    static let storyCardWriter = UTType(exportedAs: "com.example.storycardwriter.scw", conformingTo: .json)
+    static let storyCardWriter = UTType(exportedAs: "com.tetsushozawa.storycardwriter.scw", conformingTo: .json)
 }
 
 enum StoryProjectFileDecoder {
