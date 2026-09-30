@@ -31,7 +31,7 @@ struct CharacterMemoView: View {
                     .background(Color(uiColor: .secondarySystemBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .overlay(alignment: .topLeading) {
-                        if memoDraft.isEmpty { Text("自由メモ").foregroundStyle(.secondary).padding(12) }
+                        if memoDraft.isEmpty { Text("自由メモ").foregroundStyle(.secondary).padding(12).allowsHitTesting(false) }
                     }
                 HStack {
                     Button("メモを追加") { addNote(sectionID: nil, text: memoDraft); memoDraft = "" }
@@ -103,7 +103,7 @@ struct CharacterMemoView: View {
             }.buttonStyle(.bordered).frame(maxWidth: .infinity)
         }
         .padding(12).background(.background).clipShape(RoundedRectangle(cornerRadius: 9))
-        .overlay(RoundedRectangle(cornerRadius: 9).stroke(.secondary.opacity(0.35)))
+        .overlay(RoundedRectangle(cornerRadius: 9).stroke(.secondary.opacity(0.35)).allowsHitTesting(false))
     }
 
     private func noteList(_ notes: [CharacterNote], sectionID: String?) -> some View {

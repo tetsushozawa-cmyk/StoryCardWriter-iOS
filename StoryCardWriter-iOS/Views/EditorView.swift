@@ -116,7 +116,7 @@ struct EditorView: View {
                 .scrollContentBackground(.hidden)
                 .background(Color(uiColor: .secondarySystemBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(.secondary.opacity(0.35)))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(.secondary.opacity(0.35)).allowsHitTesting(false))
             HStack {
                 if editingID != nil || insertAfterID != nil {
                     Button("キャンセル", action: clearMode).buttonStyle(.bordered)
@@ -224,7 +224,7 @@ private struct StoryCardRow: View {
             }
             .padding(12).background(card.type.color.opacity(0.07))
             .clipShape(RoundedRectangle(cornerRadius: 9))
-            .overlay(RoundedRectangle(cornerRadius: 9).stroke(card.type.color.opacity(0.65)))
+            .overlay(RoundedRectangle(cornerRadius: 9).stroke(card.type.color.opacity(0.65)).allowsHitTesting(false))
             .frame(maxWidth: (card.type == .target || card.type == .reference) ? 300 : 350)
             if card.type == .subject || card.type == .legacyHero { Spacer(minLength: 38) }
         }

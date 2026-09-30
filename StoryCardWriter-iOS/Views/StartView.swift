@@ -99,7 +99,7 @@ struct StartView: View {
     private func field(_ label: String, text: Binding<String>, color: Color) -> some View {
         TextField(label, text: text)
             .padding(12)
-            .overlay(RoundedRectangle(cornerRadius: 7).stroke(color.opacity(0.65)))
+            .overlay(RoundedRectangle(cornerRadius: 7).stroke(color.opacity(0.65)).allowsHitTesting(false))
     }
 
     private func normalized(_ value: String, _ fallback: String) -> String {
